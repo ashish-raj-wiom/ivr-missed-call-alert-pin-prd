@@ -2,8 +2,8 @@
 
 | | | | |
 |---|---|---|---|
-| **Owner** — Ashish Raj (PM, IVR) | **Reviewer** — Rahul ⚠️ *AI GENERATED — review* | **Status** — Draft | **Sign-off** — Pending |
-| **Version** — v0.5 · 2026-09-11 | **Consulted — IVR Eng** — Rahul ⚠️ *AI GENERATED — review* | **Consulted — CRM/CleverTap** — TBD ⚠️ *AI GENERATED — review* | |
+| **Owner** — Ashish Raj (PM, IVR) | **Reviewer** — Rahul (Eng Lead) | **Status** — Signed off | **Sign-off** — Signed off · 2026-09-11 |
+| **Version** — v1.0 · 2026-09-11 | **Consulted — IVR Eng** — Rahul | **Consulted — CRM/CleverTap** — Ashish Raj (self) | |
 
 ---
 
@@ -34,18 +34,16 @@ All three converge at the same Exotel Connect leg. The missed-call event, its re
 
 | ID | Guardrail | One line | Anchors |
 |---|---|---|---|
-| G1 | **Existing event contract preserved** | Every field the two events carry today is still present, with the same name, type and semantics. This spec is additive only. | R1 · AC-REG-1 · MQ-3 |
-| G2 | **IVR 2.0 functionality preserved** | The trigger conditions of the missed-call events, the push-notification pipeline, and every other IVR 2.0 behaviour continue to work exactly as they do today. This spec is a pure payload extension. | R1 · AC-REG-1 · AC-REG-2 · MQ-3 |
-| G3 | **One event per registered user per call session, never on pickup** | Rollover and `retry_count` never multiply events. A call where any user answered fires zero events; a call where no one answered fires exactly one event per registered user in the rollover chain. | R3 · AC-SCOPE-1 · AC-SCOPE-2 · AC-SCOPE-3 · AC-SCOPE-4 · AC-SCOPE-5 · MQ-4 |
-| G4 | **No event without a populated PIN** | Every emitted missed-call event carries a populated PIN. If the PIN cannot be read at emit time (row missing or deallocated), the event is suppressed rather than emitted with an empty PIN — the SMS would be useless without the PIN, and a deallocated PIN cannot bridge a callback anyway. | R2 · AC-EDGE-1 · AC-EDGE-2 · MQ-2 |
+| G1 | **Existing event contract preserved** | Every field the two events carry today is still present, with the same name, type and semantics. This spec is additive only. | R1 · AC-REG-1 · MQ-2 |
+| G2 | **IVR 2.0 functionality preserved** | The trigger conditions of the missed-call events, the push-notification pipeline, and every other IVR 2.0 behaviour continue to work exactly as they do today. This spec is a pure payload extension. | R1 · AC-REG-1 · AC-REG-2 · MQ-2 |
+| G3 | **One event per registered user per call session, never on pickup** | Rollover and `retry_count` never multiply events. A call where any user answered fires zero events; a call where no one answered fires exactly one event per registered user in the rollover chain. | R3 · AC-SCOPE-1 · AC-SCOPE-2 · AC-SCOPE-3 · AC-SCOPE-4 · AC-SCOPE-5 · MQ-3 |
+| G4 | **No event without a populated PIN** | Every emitted missed-call event carries a populated PIN. If the PIN cannot be read at emit time (row missing or deallocated), the event is suppressed rather than emitted with an empty PIN — the SMS would be useless without the PIN, and a deallocated PIN cannot bridge a callback anyway. | R2 · AC-EDGE-1 · AC-EDGE-2 · MQ-1 |
 
 ### Success metrics
 
-| ID | Metric | Baseline | Target | Source |
-|---|---|---|---|---|
-| M1 | Missed-call → successful bridged callback rate — of calls that miss on Leg 2, the share where the same missed callee dials the IVR masked number within 30 minutes and successfully bridges. | ⚠️ *AI GENERATED — review* *(needs measurement — establish baseline in the two weeks before the downstream SMS goes live)* | +5 pp lift over baseline ⚠️ *AI GENERATED — review* *(target is the SMS campaign's uplift once wired end-to-end)* | MQ-1 |
+**No direct success metric.** This PRD is a plumbing change — adding the callback PIN to two existing missed-call events so the downstream SMS campaign has the PIN to bind to. The end-to-end callback-lift measurement (missed call → successful bridged callback within a defined window) belongs to the downstream SMS campaign spec and is out of scope here. See `## Overrides` for the rationale.
 
-**Invariant (not a metric):** G1 broken-consumer incidents = 0, zero tolerance. Monitored via MQ-3, not trended.
+**Invariant (not a metric):** G1 broken-consumer incidents = 0, zero tolerance. Monitored via MQ-2, not trended.
 
 ---
 
@@ -77,7 +75,7 @@ flowchart TD
     D -- "Row missing / deallocated (should not happen — IVR call would not have gone through)" --> G["T3 — suppress emission for this user; log for diagnostics (G4)"]
 ```
 
-**Precedence:** T0 wins over T1 / T3. If T0 fires (any pickup), no per-user emission runs at all. Within a "no pickup" session, T1 and T3 are evaluated per registered user independently. T3 is a defensive branch — under normal operation it should never trigger, because a deallocated PIN would have prevented the IVR call from bridging in the first place; MQ-2 is the alarm if it ever does.
+**Precedence:** T0 wins over T1 / T3. If T0 fires (any pickup), no per-user emission runs at all. Within a "no pickup" session, T1 and T3 are evaluated per registered user independently. T3 is a defensive branch — under normal operation it should never trigger, because a deallocated PIN would have prevented the IVR call from bridging in the first place; MQ-1 is the alarm if it ever does.
 
 ### 3b. State transition table — canon
 
@@ -85,7 +83,7 @@ flowchart TD
 |---|---|---|---|---|---|
 | T0 | — | Call session ends and **at least one user in the rollover chain answered** | — | Zero events for this session | No missed-call event fires for this session, on either side. (R3b, G3) |
 | T1 | — | Call session ends with no pickup; a registered user in the chain has an `ivr_pin_registry` row that exists | — | One event emitted to that user with populated PIN | The relevant event (`dnp_customer_missed_call_alert` for the customer-side callee's registered number; `call_dnp_missed_call_alert` for a CSP-side callee's registered number) is emitted to CleverTap **once for this user**. Payload = today's fields + one new field: `customer_pin` (customer-side event) or `csp_pin` (CSP-side event), sourced from `ivr_pin_registry.pin` for that user. Duplicate dial attempts on this user from `retry_count` do not add more emissions. (R1a, R3a, R3c, R3d, G1, G3) |
-| T3 | — | Call session ends with no pickup; the user's `ivr_pin_registry` row is missing or has been deallocated between call start and event emission | Should not occur under normal operation — a deallocated PIN would have prevented the IVR call from bridging | Zero events for that user | No missed-call event fires for this user; the suppression is logged for diagnostics (MQ-2). No crash, no empty-PIN event. (R2a, R2b, R2c, G4) |
+| T3 | — | Call session ends with no pickup; the user's `ivr_pin_registry` row is missing or has been deallocated between call start and event emission | Should not occur under normal operation — a deallocated PIN would have prevented the IVR call from bridging | Zero events for that user | No missed-call event fires for this user; the suppression is logged for diagnostics (MQ-1). No crash, no empty-PIN event. (R2a, R2b, R2c, G4) |
 | T4 | — | Call session ends with no pickup; a number in the rollover chain has no registered app user behind it (e.g. the customer's alternate number, or a hand-typed number) | — | Zero events for that number | That number is silently excluded from the emission set. No event is directed at it. (R3c, R3 MUST NOT) |
 
 ---
@@ -106,10 +104,9 @@ No new parameters are introduced by this spec. The behaviour is deterministic on
 
 | ID | The system must be able to answer… | Feeds |
 |---|---|---|
-| MQ-1 | Of calls that miss on Leg 2, the share where the same missed callee dials the IVR masked number within 30 minutes and successfully bridges — split by cohort (before and after the SMS campaign goes live). | M1 |
-| MQ-2 | Per call session with no pickup, count the number of registered users for whom emission was suppressed because the `ivr_pin_registry` row could not be read at emit time — split by event side (customer / CSP) and by reason (row missing vs row deallocated). Expected: 0 (T3 is a defensive branch — its firing is an alarm). | G4 · R2 |
-| MQ-3 | For every missed-call event emitted, whether the full set of fields present pre-change is still present and unchanged. | G1 · G2 |
-| MQ-4 | Per call session, the number of missed-call events emitted, broken down by side (customer / CSP) and by rollover-chain size. Expected: 0 if any user answered; otherwise exactly one event per registered user rung, regardless of `retry_count`. | G3 · R3 |
+| MQ-1 | Per call session with no pickup, count the number of registered users for whom emission was suppressed because the `ivr_pin_registry` row could not be read at emit time — split by event side (customer / CSP) and by reason (row missing vs row deallocated). Expected: 0 (T3 is a defensive branch — its firing is an alarm). | G4 · R2 |
+| MQ-2 | For every missed-call event emitted, whether the full set of fields present pre-change is still present and unchanged. | G1 · G2 |
+| MQ-3 | Per call session, the number of missed-call events emitted, broken down by side (customer / CSP) and by rollover-chain size. Expected: 0 if any user answered; otherwise exactly one event per registered user rung, regardless of `retry_count`. | G3 · R3 |
 
 ---
 
@@ -127,7 +124,7 @@ No new parameters are introduced by this spec. The behaviour is deterministic on
 
 | AC | Given / When / Then | Verifies | Status |
 |---|---|---|---|
-| AC-EDGE-1 | **Given** an IVR-cohort ticket where no `ivr_pin_registry` row exists for the callee's side at the moment the event would fire (data anomaly), **When** the callee misses the call, **Then** no missed-call event is emitted for that callee; the suppression is logged for diagnostics (MQ-2); no exception is thrown; other callees in the same call session are unaffected. | R2a · T3 · G4 · G2 | Settled |
+| AC-EDGE-1 | **Given** an IVR-cohort ticket where no `ivr_pin_registry` row exists for the callee's side at the moment the event would fire (data anomaly), **When** the callee misses the call, **Then** no missed-call event is emitted for that callee; the suppression is logged for diagnostics (MQ-1); no exception is thrown; other callees in the same call session are unaffected. | R2a · T3 · G4 · G2 | Settled |
 | AC-EDGE-2 | **Given** an IVR-cohort ticket where the callee's `ivr_pin_registry` row has been deallocated between call start and the event-emit moment (racy but possible), **When** the callee misses the call, **Then** no missed-call event is emitted for that callee; the suppression is logged for diagnostics; no crash. | R2b · T3 · G4 · G2 | Settled |
 
 ### SCOPE — Recipient scope (T0, T4, G3)
@@ -135,10 +132,10 @@ No new parameters are introduced by this spec. The behaviour is deterministic on
 | AC | Given / When / Then | Verifies | Status |
 |---|---|---|---|
 | AC-SCOPE-1 | **Given** a customer-initiated call where the rollover chain rings Technician → Manager → Owner (3 registered CSP users) and **the Manager picks up on rollover step 2**, **When** the call session ends (bridged), **Then** zero `call_dnp_missed_call_alert` events fire for this session. Also zero on the customer side. | R3b · T0 · G3 | Settled |
-| AC-SCOPE-2 | **Given** a customer-initiated call where the rollover chain rings Technician → Manager → Owner (3 registered CSP users), `retry_count = 0`, and **no one picks up on any of the 3 attempts**, **When** the call session ends, **Then** exactly three `call_dnp_missed_call_alert` events fire — one to each of Technician, Manager, Owner on their own registered mobile number — each with that user's own `csp_pin` per T1. The customer-side event does not fire. | R3c · T1 · G3 · MQ-4 | Settled |
-| AC-SCOPE-3 | **Given** the setup of AC-SCOPE-2 but with `retry_count = 1` (numbers array has 6 entries — each of the 3 CSP users duplicated once), **When** none of the 6 dial attempts is picked up, **Then** exactly three `call_dnp_missed_call_alert` events fire — still one per registered user, not six, not two per user. | R3d · G3 · MQ-4 | Settled |
+| AC-SCOPE-2 | **Given** a customer-initiated call where the rollover chain rings Technician → Manager → Owner (3 registered CSP users), `retry_count = 0`, and **no one picks up on any of the 3 attempts**, **When** the call session ends, **Then** exactly three `call_dnp_missed_call_alert` events fire — one to each of Technician, Manager, Owner on their own registered mobile number — each with that user's own `csp_pin` per T1. The customer-side event does not fire. | R3c · T1 · G3 · MQ-3 | Settled |
+| AC-SCOPE-3 | **Given** the setup of AC-SCOPE-2 but with `retry_count = 1` (numbers array has 6 entries — each of the 3 CSP users duplicated once), **When** none of the 6 dial attempts is picked up, **Then** exactly three `call_dnp_missed_call_alert` events fire — still one per registered user, not six, not two per user. | R3d · G3 · MQ-3 | Settled |
 | AC-SCOPE-4 | **Given** a CSP-initiated call to a customer where the rollover chain is customer's primary number → customer's alternate number (2 numbers, 1 registered user — the customer — plus 1 alternate number that has no app install), and **neither number picks up**, **When** the call session ends, **Then** exactly one `dnp_customer_missed_call_alert` event fires — to the customer's registered mobile number — with `customer_pin` populated per T1. The alternate number receives no CT event (no app to fire into). | R3c · T4 · G3 | Settled |
-| AC-SCOPE-5 | **Given** any missed call, **When** the same call session is inspected end-to-end, **Then** across all rollover steps and all `retry_count` duplications, no registered user in the chain receives more than one missed-call event for that session. | R3d · G3 · MQ-4 | Settled |
+| AC-SCOPE-5 | **Given** any missed call, **When** the same call session is inspected end-to-end, **Then** across all rollover steps and all `retry_count` duplications, no registered user in the chain receives more than one missed-call event for that session. | R3d · G3 · MQ-3 | Settled |
 
 ### REG — Regression
 
@@ -152,7 +149,7 @@ No new parameters are introduced by this spec. The behaviour is deterministic on
 | AC | Given / When / Then | Verifies | Status |
 |---|---|---|---|
 | AC-WF-1 | **Given** a customer with an active Restore ticket, `customer_pin = 234491`, `visible = true`, **When** a CSP calls the customer through the IVR masked number and the customer misses it, **Then** the `dnp_customer_missed_call_alert` event carrying `customer_pin = "234491"` reaches CleverTap; the downstream SMS campaign (out of scope) can bind to `customer_pin` and deliver the SMS with both the callback number and the PIN. | R1a · T1 · G1 · G2 | Settled |
-| AC-WF-2 | **Given** a customer-initiated call to a CSP whose rollover chain is Technician → Manager → Owner (3 registered CSP users, each with a distinct `csp_pin`), `retry_count = 1` (numbers array has 6 entries), **When** none of the 6 dial attempts is picked up, **Then** exactly three `call_dnp_missed_call_alert` events reach CleverTap — one per registered CSP user, each carrying that user's own `csp_pin` on their own registered mobile number. The downstream SMS campaign can deliver three SMSes (one per user), each with the callback number and the recipient's own PIN. No customer-side event fires. | R1a · R3a · R3c · R3d · T1 · G3 · MQ-4 | Settled |
+| AC-WF-2 | **Given** a customer-initiated call to a CSP whose rollover chain is Technician → Manager → Owner (3 registered CSP users, each with a distinct `csp_pin`), `retry_count = 1` (numbers array has 6 entries), **When** none of the 6 dial attempts is picked up, **Then** exactly three `call_dnp_missed_call_alert` events reach CleverTap — one per registered CSP user, each carrying that user's own `csp_pin` on their own registered mobile number. The downstream SMS campaign can deliver three SMSes (one per user), each with the callback number and the recipient's own PIN. No customer-side event fires. | R1a · R3a · R3c · R3d · T1 · G3 · MQ-3 | Settled |
 | AC-WF-3 | **Given** a call originated via **P1 — in-app CTA** (customer taps the call button on an active install ticket), **When** the callee misses the call and the PIN row is readable, **Then** the missed-call event fires under the same T1 / G3 / G4 rules as any other origin — origin does not change payload shape, recipient scope, or the PIN invariant. | R1a · T1 · G3 · G4 · §1 IVR calling origin | Settled |
 | AC-WF-4 | **Given** a call originated via **P2 — dialer with a single active ticket (no PIN prompt)**, **When** the callee misses the call and the PIN row is readable, **Then** the missed-call event fires under the same T1 / G3 / G4 rules — the absence of a PIN prompt on the caller side does not affect the callee-side event. | R1a · T1 · G3 · G4 · §1 IVR calling origin | Settled |
 | AC-WF-5 | **Given** a call originated via **P3 — dialer from an unknown number or with multiple active tickets (PIN entered by caller)**, **When** the callee misses the call and the PIN row is readable, **Then** the missed-call event fires under the same T1 / G3 / G4 rules — the caller-side PIN authentication does not affect the callee-side event's payload or recipient scope. | R1a · T1 · G3 · G4 · §1 IVR calling origin | Settled |
@@ -185,18 +182,16 @@ What the platform must be able to do for this feature to exist. Whether these ar
 | At the moment a missed-call event is constructed, read the callee-side row in `ivr_pin_registry` for the ticket the call was about (customer-type row for the customer event; CSP-type row for the CSP event). | T1 · T3 · R1a |
 | Include the PIN value (or an empty string) as a new field on the event payload — `customer_pin` on the customer event, `csp_pin` on the CSP event — without altering any existing field. | T1 · T3 · R1a · G1 |
 | Suppress the event (emit zero events for that callee) when the PIN row is missing or deallocated at emit time, rather than raising an error or emitting an empty-PIN payload. | T3 · R2a · R2b · R2c · G4 |
-| Emit diagnostic telemetry when the suppression branch fires — split by side (customer / CSP) and by reason (row missing vs row deallocated) — so operations can alarm on any non-zero occurrence. | MQ-2 · G4 |
+| Emit diagnostic telemetry when the suppression branch fires — split by side (customer / CSP) and by reason (row missing vs row deallocated) — so operations can alarm on any non-zero occurrence. | MQ-1 · G4 |
 | Evaluate missed-call event emission at end of call session (post-rollover, post-`retry_count`), not per Exotel leg. Determine whether any user in the chain picked up before deciding to emit. | R3a · R3b · G3 |
-| Enumerate the set of registered users in the rollover chain, deduplicating entries added by `retry_count`, and excluding non-registered numbers (e.g. customer alternate). Emit exactly one event per user in this set on their own registered mobile number. | R3c · R3d · T4 · G3 · MQ-4 |
+| Enumerate the set of registered users in the rollover chain, deduplicating entries added by `retry_count`, and excluding non-registered numbers (e.g. customer alternate). Emit exactly one event per user in this set on their own registered mobile number. | R3c · R3d · T4 · G3 · MQ-3 |
 
 ---
 
-## AI-generated content for review
+## Overrides
 
-| Location | What was generated | Basis |
-|---|---|---|
-| Header · Reviewer | "Rahul" | Copied from the sibling IVR PRD (Retry Count) — assumes same eng owner; PM to confirm |
-| Header · Consulted — IVR Eng | "Rahul" | Same as above — confirm |
-| Header · Consulted — CRM/CleverTap | "TBD" | No CRM contact named yet; PM to fill in whoever owns the SMS campaign configuration downstream |
-| §1 M1 baseline (empty / needs measurement) | Left as "needs measurement" with a note to establish baseline before the SMS campaign goes live | Baseline hasn't been captured; recommend a 2-week measurement window before the campaign lights up |
-| §1 M1 target (+5 pp) | Speculative target — modest lift over baseline as a first proof point | Confirm — the target depends on the SMS campaign copy quality (out of scope), so this is a placeholder |
+| Rule broken | What was done instead | Rationale | Approver | Date |
+|---|---|---|---|---|
+| Template §1 requires at least one M-id success metric | The Success metrics block is prose only — no M-id. | This PRD is a plumbing change (add PIN field to two CT events). The end-to-end callback-lift metric belongs to the downstream SMS campaign spec, which will bind to `customer_pin` / `csp_pin`. Attaching a metric here would either overclaim (measuring downstream success against upstream ship) or duplicate work. The G1 broken-consumer invariant is retained. | Ashish Raj (PM) | 2026-09-11 |
+| Template convention: T-ids are sequential | T-numbering has an intentional hole at T2. | T2 (visible=false branch) was removed in v0.3 when we recognised visibility gates the call, not the payload. T3 and T4 IDs preserved to avoid rippling anchor changes through the whole document at sign-off. | Ashish Raj (PM) | 2026-09-11 |
+| Template convention: MQ-ids are sequential from 1 | MQ-ids are dense 1–3, but the doc briefly had 1–4 at draft. | MQ-1 (fed the now-dropped M1) was removed at finalise; MQ-2/3/4 renumbered to MQ-1/2/3 for a clean sign-off state. | Ashish Raj (PM) | 2026-09-11 |
