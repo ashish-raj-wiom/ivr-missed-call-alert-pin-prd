@@ -3,7 +3,7 @@
 | | | | |
 |---|---|---|---|
 | **Owner** — Ashish Raj (PM, IVR) | **Reviewer** — Rahul ⚠️ *AI GENERATED — review* | **Status** — Draft | **Sign-off** — Pending |
-| **Version** — v0.4 · 2026-09-11 | **Consulted — IVR Eng** — Rahul ⚠️ *AI GENERATED — review* | **Consulted — CRM/CleverTap** — TBD ⚠️ *AI GENERATED — review* | |
+| **Version** — v0.5 · 2026-09-11 | **Consulted — IVR Eng** — Rahul ⚠️ *AI GENERATED — review* | **Consulted — CRM/CleverTap** — TBD ⚠️ *AI GENERATED — review* | |
 
 ---
 
@@ -14,6 +14,13 @@
 **Objective.** When a call misses, every registered user who was rung and did not answer receives an SMS that contains both the number to call back on and their own PIN to enter — so they can complete the callback in one shot without hunting for the PIN in their chat / ticket card.
 
 **How this PRD contributes.** This PRD does two things: (i) add the callback PIN to the two existing CleverTap missed-call events so the downstream SMS campaign has the PIN to bind to, and (ii) pin down the recipient-scope rules for those events so the rollover chain (Sept 2 release) and the `retry_count` duplication (see [[ivr-retry-count-prd]]) never fire the event more than once per registered user per call session — and never at all if anyone in the chain answered. The SMS campaign template, DLT copy, delivery rules and CleverTap journey configuration are downstream of this spec and out of scope (§8).
+
+**IVR calling origin — informational.** The IVR masked number is reached by three paths today, all covered by this spec (behaviour is identical across them):
+- **P1 — In-app CTA.** Caller taps the call button inside the Customer App or CSP / Technician App; the app dials the masked number.
+- **P2 — Dialer, single active ticket.** Caller dials the masked number directly; because they have exactly one active ticket, no PIN is required — IVR routes on caller identity.
+- **P3 — Dialer, PIN required.** Caller dials from an unknown number, or has multiple active tickets, so IVR prompts for the PIN before routing.
+
+All three converge at the same Exotel Connect leg. The missed-call event, its recipient-scope rules (G3), and the PIN invariant (G4) apply identically regardless of origin.
 
 **Recipient scope — canonical.** Fires only after the call session ends. A call session is one caller-initiated dial of the IVR masked number, including its full rollover chain and any `retry_count` duplication.
 - **Only if no one answered.** If any user in the rollover chain picked up, no missed-call event fires for that session.
@@ -146,6 +153,9 @@ No new parameters are introduced by this spec. The behaviour is deterministic on
 |---|---|---|---|
 | AC-WF-1 | **Given** a customer with an active Restore ticket, `customer_pin = 234491`, `visible = true`, **When** a CSP calls the customer through the IVR masked number and the customer misses it, **Then** the `dnp_customer_missed_call_alert` event carrying `customer_pin = "234491"` reaches CleverTap; the downstream SMS campaign (out of scope) can bind to `customer_pin` and deliver the SMS with both the callback number and the PIN. | R1a · T1 · G1 · G2 | Settled |
 | AC-WF-2 | **Given** a customer-initiated call to a CSP whose rollover chain is Technician → Manager → Owner (3 registered CSP users, each with a distinct `csp_pin`), `retry_count = 1` (numbers array has 6 entries), **When** none of the 6 dial attempts is picked up, **Then** exactly three `call_dnp_missed_call_alert` events reach CleverTap — one per registered CSP user, each carrying that user's own `csp_pin` on their own registered mobile number. The downstream SMS campaign can deliver three SMSes (one per user), each with the callback number and the recipient's own PIN. No customer-side event fires. | R1a · R3a · R3c · R3d · T1 · G3 · MQ-4 | Settled |
+| AC-WF-3 | **Given** a call originated via **P1 — in-app CTA** (customer taps the call button on an active install ticket), **When** the callee misses the call and the PIN row is readable, **Then** the missed-call event fires under the same T1 / G3 / G4 rules as any other origin — origin does not change payload shape, recipient scope, or the PIN invariant. | R1a · T1 · G3 · G4 · §1 IVR calling origin | Settled |
+| AC-WF-4 | **Given** a call originated via **P2 — dialer with a single active ticket (no PIN prompt)**, **When** the callee misses the call and the PIN row is readable, **Then** the missed-call event fires under the same T1 / G3 / G4 rules — the absence of a PIN prompt on the caller side does not affect the callee-side event. | R1a · T1 · G3 · G4 · §1 IVR calling origin | Settled |
+| AC-WF-5 | **Given** a call originated via **P3 — dialer from an unknown number or with multiple active tickets (PIN entered by caller)**, **When** the callee misses the call and the PIN row is readable, **Then** the missed-call event fires under the same T1 / G3 / G4 rules — the caller-side PIN authentication does not affect the callee-side event's payload or recipient scope. | R1a · T1 · G3 · G4 · §1 IVR calling origin | Settled |
 
 ---
 
@@ -154,6 +164,7 @@ No new parameters are introduced by this spec. The behaviour is deterministic on
 | Term | Meaning | Owner (domain) |
 |---|---|---|
 | IVR 2.0 | The parent feature this spec extends. IVR 2.0 introduced the single masked-number architecture with PIN-based authentication and multi-number rollover. This spec adds one field to two of IVR 2.0's CleverTap events. | IVR |
+| Ticket | A customer-facing work item to which a caller-callee IVR conversation attaches. Three types today: **Install** (new-connection installation), **Service** (fault / restore on an existing connection), and **Pickup** (device pickup / router recovery). Every IVR call is about exactly one active ticket, and the callee's PIN comes from the `ivr_pin_registry` row for that ticket. | Tickets |
 | IVR masked number | The single Wiom-owned DID that both customers and CSPs dial to reach each other through IVR 2.0. | IVR |
 | Missed-call event | **Canonical definition:** the CleverTap event that gets fired on CleverTap **once per registered user who was rung, did not pick up, and has a readable PIN in `ivr_pin_registry` at emit time**, at the end of a call session in which no user in the rollover chain answered. Two variants exist, keyed by which app the recipient uses: `dnp_customer_missed_call_alert` (customer-app recipient) and `call_dnp_missed_call_alert` (CSP-app recipient). Never fires if any user answered. Never fires more than once per registered user per session, regardless of `retry_count` duplication. Never fires without a populated PIN in the payload — if the PIN row is missing or deallocated, the emission is suppressed (defensive T3 branch, G4). | IVR |
 | Call session | One caller-initiated dial of the IVR masked number, including its full multi-number rollover chain (Sept 2 release) and any `retry_count` duplication inside the Exotel `numbers` array (see [[ivr-retry-count-prd]]). The unit at which G3 evaluates emission. | IVR |
