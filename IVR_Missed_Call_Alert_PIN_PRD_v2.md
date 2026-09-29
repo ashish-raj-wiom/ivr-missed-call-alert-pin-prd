@@ -2,7 +2,7 @@
 
 | | | | |
 |---|---|---|---|
-| **Owner** — Ashish Raj (PM, IVR) | **Reviewer** — Rahul (Eng Lead) | **Status** — Draft | **Sign-off** — Pending |
+| **Owner** — Ashish Raj (PM, IVR) | **Reviewer** — Rahul (Eng Lead) | **Status** — Signed off | **Sign-off** — Signed off · 2026-09-29 |
 | **Version** — v2.0 · 2026-09-29 | **Consulted — IVR service** — Rahul | **Consulted — Message orchestrator** — Ashish Raj (self) | **Consulted** — — |
 | **Terminology source** — Wiom Operational Terminology · 29 Sep 2026 · Wiom System Terminology · 29 Sep 2026 | | | |
 
