@@ -15,6 +15,11 @@
     --bg: #fafaf9; --surface: #ffffff; --ink: #1a1a1a; --muted: #6b6b6b; --rule: #e5e5e2;
     --link: #1f3c6e;
     --code-bg: #f4f4f2;
+    --tab-active-bg: #ffffff;
+    --tab-inactive-bg: #f0efec;
+    --tab-active-border: #1a1a1a;
+    --accent-draft: #b47f00;
+    --accent-signed: #2e7d32;
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -22,16 +27,69 @@
     margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
     font-size: 15px; line-height: 1.6; color: var(--ink); background: var(--bg);
   }
-  main { max-width: 900px; margin: 0 auto; padding: 48px 56px 120px; }
-  header.doc { border-bottom: 2px solid var(--ink); padding-bottom: 18px; margin-bottom: 32px; }
+  main { max-width: 900px; margin: 0 auto; padding: 32px 56px 120px; }
+  header.doc { border-bottom: 2px solid var(--ink); padding-bottom: 14px; margin-bottom: 0; }
   header.doc .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
-  header.doc h1 { font-size: 26px; margin: 8px 0 6px; line-height: 1.25; }
+  header.doc h1 { font-size: 26px; margin: 8px 0 4px; line-height: 1.25; }
   header.doc .sub { color: var(--muted); font-size: 13px; }
+
+  /* Tab bar */
+  nav.tabs {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--bg);
+    padding: 12px 0 0;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 24px;
+  }
+  nav.tabs .tab-row {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    margin-bottom: -1px;
+  }
+  nav.tabs button.tab {
+    background: var(--tab-inactive-bg);
+    border: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    padding: 8px 14px;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--muted);
+    border-radius: 5px 5px 0 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.1s, color 0.1s;
+  }
+  nav.tabs button.tab:hover { background: #e6e5e2; color: var(--ink); }
+  nav.tabs button.tab.active {
+    background: var(--tab-active-bg);
+    color: var(--ink);
+    border-color: var(--rule);
+    border-bottom-color: var(--tab-active-bg);
+    font-weight: 600;
+  }
+  nav.tabs button.tab .status-dot {
+    width: 7px; height: 7px; border-radius: 50%; display: inline-block;
+  }
+  nav.tabs button.tab .status-dot.draft { background: var(--accent-draft); }
+  nav.tabs button.tab .status-dot.signed { background: var(--accent-signed); }
+  nav.tabs button.tab .kind {
+    font-weight: 400; color: var(--muted); font-size: 12px;
+  }
+  nav.tabs button.tab.active .kind { color: var(--ink); }
+  nav.tabs .active-meta {
+    padding: 10px 0 12px;
+    font-size: 12px; color: var(--muted);
+    display: flex; gap: 14px; flex-wrap: wrap;
+  }
+  nav.tabs .active-meta a { color: var(--link); }
+
+  /* Content */
   h1, h2, h3, h4 { color: var(--ink); }
-  h1 { font-size: 26px; margin: 32px 0 12px; }
-  h2 { font-size: 21px; margin: 40px 0 14px; padding-bottom: 6px; border-bottom: 1px solid var(--rule); scroll-margin-top: 16px; }
-  h3 { font-size: 16px; margin: 24px 0 8px; }
-  h4 { font-size: 14px; margin: 18px 0 6px; }
+  #content h1 { font-size: 24px; margin: 24px 0 12px; }
+  #content h2 { font-size: 19px; margin: 32px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--rule); scroll-margin-top: 80px; }
+  #content h3 { font-size: 15px; margin: 22px 0 8px; }
+  #content h4 { font-size: 14px; margin: 18px 0 6px; }
   p { margin: 10px 0; }
   ul, ol { margin: 8px 0 12px; padding-left: 24px; }
   li { margin: 3px 0; }
@@ -46,11 +104,17 @@
   th { background: var(--bg); font-weight: 600; }
   blockquote { margin: 10px 0; padding: 10px 14px; background: var(--code-bg); border-left: 3px solid var(--muted); color: #333; }
   .mermaid { text-align: center; background: var(--surface); border: 1px solid var(--rule); border-radius: 5px; padding: 14px; margin: 14px 0; overflow-x: auto; }
+
+  .loading { color: var(--muted); font-style: italic; padding: 40px 0; text-align: center; }
+  .error { color: #b91c1c; padding: 20px; border: 1px solid #f5c2c0; background: #fff5f5; border-radius: 4px; }
+
   @media (max-width: 900px) {
-    main { padding: 24px 18px 80px; }
-    h2 { font-size: 18px; }
+    main { padding: 20px 16px 80px; }
+    #content h2 { font-size: 17px; }
     table { font-size: 12.5px; }
     th, td { padding: 6px 8px; }
+    nav.tabs button.tab { padding: 6px 10px; font-size: 12px; }
+    nav.tabs button.tab .kind { display: none; }
   }
 </style>
 </head>
@@ -58,29 +122,126 @@
 <main>
 
 <header class="doc">
-  <div class="eyebrow">IVR — Change Spec · Signed off</div>
+  <div class="eyebrow">IVR — Change Spec</div>
   <h1>IVR Missed Call Alert — add PIN to the callback SMS</h1>
-  <div class="sub">Renders <a href="https://github.com/ashish-raj-wiom/ivr-missed-call-alert-pin-prd/blob/main/IVR_Missed_Call_Alert_PIN_PRD.md">IVR_Missed_Call_Alert_PIN_PRD.md</a> live from the repo — stays in exact sync with the source.</div>
-  <div class="doc-nav" style="display:flex;gap:14px;margin-top:10px;font-size:13px;">
-    <a href="https://github.com/ashish-raj-wiom/ivr-missed-call-alert-pin-prd/blob/main/IVR_Missed_Call_Alert_PIN_Tradeoffs.md">Tradeoffs register →</a>
-  </div>
+  <div class="sub">Two versions live in this repo. Switch tabs to compare.</div>
 </header>
 
-<div id="content">Loading…</div>
+<nav class="tabs">
+  <div class="tab-row" id="tab-row"></div>
+  <div class="active-meta" id="active-meta"></div>
+</nav>
+
+<div id="content"><div class="loading">Loading…</div></div>
 
 <script>
-  const MD_URL = 'https://raw.githubusercontent.com/ashish-raj-wiom/ivr-missed-call-alert-pin-prd/main/IVR_Missed_Call_Alert_PIN_PRD.md';
-  fetch(MD_URL)
-    .then(r => r.ok ? r.text() : Promise.reject('HTTP ' + r.status))
-    .then(md => {
-      const processed = md.replace(/```mermaid\n([\s\S]*?)```/g, (_, body) => `<div class="mermaid">${body}</div>`);
-      document.getElementById('content').innerHTML = marked.parse(processed);
+  const REPO_MAIN = 'https://raw.githubusercontent.com/ashish-raj-wiom/ivr-missed-call-alert-pin-prd/main';
+  const REPO_BLOB = 'https://github.com/ashish-raj-wiom/ivr-missed-call-alert-pin-prd/blob/main';
+
+  const VIEWS = [
+    {
+      id: 'v2-prd',
+      label: 'v2.0 PRD',
+      kind: 'Template v5 · Draft',
+      status: 'draft',
+      file: 'IVR_Missed_Call_Alert_PIN_PRD_v2.md',
+      description: 'Re-authored 29 Sep 2026 into Wiom PRD Template v5. Terminology aligned to Wiom Operational Terminology; single §5 diagram; no §3b state table.',
+    },
+    {
+      id: 'v2-tradeoffs',
+      label: 'v2.0 Tradeoffs',
+      kind: '10 decisions',
+      status: 'draft',
+      file: 'IVR_Missed_Call_Alert_PIN_Tradeoffs_v2.md',
+      description: 'Companion to v2.0 PRD. Rows 1–9 carried from v1.0 verbatim; row 10 is the re-authoring itself.',
+    },
+    {
+      id: 'v1-prd',
+      label: 'v1.0 PRD',
+      kind: 'Template v4 · Signed off 11 Sep 2026',
+      status: 'signed',
+      file: 'IVR_Missed_Call_Alert_PIN_PRD.md',
+      description: 'The signed-off record, Template v4. Behaviourally identical to v2.0.',
+    },
+    {
+      id: 'v1-tradeoffs',
+      label: 'v1.0 Tradeoffs',
+      kind: '9 decisions',
+      status: 'signed',
+      file: 'IVR_Missed_Call_Alert_PIN_Tradeoffs.md',
+      description: 'Companion to v1.0 PRD.',
+    },
+  ];
+
+  const cache = new Map();
+  const STORAGE_KEY = 'ivr-mca-pin-active-view';
+
+  function readStoredView() {
+    try { return localStorage.getItem(STORAGE_KEY); } catch (e) { return null; }
+  }
+  function writeStoredView(id) {
+    try { localStorage.setItem(STORAGE_KEY, id); } catch (e) { /* ignore */ }
+  }
+
+  function renderMd(md) {
+    const processed = md.replace(/```mermaid\n([\s\S]*?)```/g, (_, body) => `<div class="mermaid">${body}</div>`);
+    return marked.parse(processed);
+  }
+
+  async function loadView(view) {
+    const contentEl = document.getElementById('content');
+    const metaEl = document.getElementById('active-meta');
+    metaEl.innerHTML = view.description +
+      ' &nbsp;·&nbsp; ' +
+      '<a href="' + REPO_BLOB + '/' + view.file + '" target="_blank" rel="noopener">source on GitHub ↗</a>';
+
+    if (cache.has(view.id)) {
+      contentEl.innerHTML = cache.get(view.id);
       if (window.__mermaidRender) window.__mermaidRender();
-    })
-    .catch(err => {
-      document.getElementById('content').innerHTML =
-        '<p style="color:#b91c1c">Failed to load the PRD source (' + err + '). Check <a href="' + MD_URL + '">the source</a>.</p>';
+      return;
+    }
+    contentEl.innerHTML = '<div class="loading">Loading ' + view.label + '…</div>';
+    try {
+      const url = REPO_MAIN + '/' + view.file;
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const md = await resp.text();
+      const html = renderMd(md);
+      cache.set(view.id, html);
+      contentEl.innerHTML = html;
+      if (window.__mermaidRender) window.__mermaidRender();
+    } catch (err) {
+      contentEl.innerHTML =
+        '<div class="error">Failed to load <code>' + view.file + '</code> (' + err.message + '). ' +
+        '<a href="' + REPO_BLOB + '/' + view.file + '">Open on GitHub</a>.</div>';
+    }
+  }
+
+  function activateView(id) {
+    const view = VIEWS.find(v => v.id === id) || VIEWS[0];
+    document.querySelectorAll('nav.tabs button.tab').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.id === view.id);
     });
+    writeStoredView(view.id);
+    loadView(view);
+  }
+
+  function renderTabs() {
+    const row = document.getElementById('tab-row');
+    row.innerHTML = VIEWS.map(v =>
+      '<button class="tab" data-id="' + v.id + '">' +
+      '<span class="status-dot ' + v.status + '"></span>' +
+      '<span>' + v.label + '</span>' +
+      '<span class="kind">· ' + v.kind + '</span>' +
+      '</button>'
+    ).join('');
+    row.querySelectorAll('button.tab').forEach(btn => {
+      btn.addEventListener('click', () => activateView(btn.dataset.id));
+    });
+  }
+
+  renderTabs();
+  activateView(readStoredView() || 'v2-prd');
 </script>
 
 </main>
