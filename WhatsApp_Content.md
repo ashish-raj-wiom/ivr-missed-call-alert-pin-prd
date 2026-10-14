@@ -24,23 +24,10 @@ The push notifications live today anchor tone and language mix:
 
 ## Customer WhatsApp — sent when the customer missed the call
 
-### Recommended — Hindi (Devanagari with "engineer" in Roman)
-
 > आपने हमारे engineer का कॉल मिस कर दिया है।
 >
 > वापस कॉल करने के लिए इस नंबर पर कॉल करें: *{{1}}*
 > PIN: *{{2}}*
->
-> — Wiom
-
-### Alternative — Bilingual (English first, Hindi second)
-
-> You missed a call from your Wiom engineer.
-> Call back on *{{1}}*
-> PIN: *{{2}}*
->
-> आपने हमारे engineer का कॉल मिस कर दिया है।
-> वापस कॉल करें *{{1}}* पर, PIN *{{2}}* डालें।
 >
 > — Wiom
 
@@ -48,19 +35,9 @@ The push notifications live today anchor tone and language mix:
 
 ## CSP WhatsApp — sent when the CSP missed the call
 
-### Recommended — Hindi (matches today's CSP push style)
-
 > आपने कनेक्शन का कॉल मिस कर दिया है।
 >
 > वापस कॉल करने के लिए इस नंबर पर कॉल करें: *{{1}}*
-> PIN: *{{2}}*
->
-> — Wiom
-
-### Alternative — English
-
-> You missed a call from your connection.
-> Call back on *{{1}}*
 > PIN: *{{2}}*
 >
 > — Wiom
@@ -87,7 +64,7 @@ If the WhatsApp Business review team flags "engineer" or asks for a canonical te
 ## Notes for the Message orchestrator / WhatsApp Business team
 
 1. **Template category.** Utility (triggered by a specific user action — a missed call). Not Marketing. Not Authentication.
-2. **Language variants.** Each variant (Hindi, English, Bilingual) is its own template. For launch today, submit the two recommended templates first (Hindi for customer, Hindi for CSP) and add English variants later.
+2. **Language.** Hindi only, per PM. Two templates — one customer-side, one CSP-side.
 3. **No DLT required.** WhatsApp Business templates go through Meta's own approval, not the TRAI DLT pipeline. Expect approval within ~24 hours for Utility templates.
 4. **Fallback.** If a recipient's WhatsApp is unreachable, the orchestrator should fall back to the SMS templates from the previous draft (now superseded) — or let the push notification stand on its own. Confirm which with the orchestrator team.
 5. **G4 contract (unchanged from the signed-off PRD).** The CT event will never carry an empty PIN — if the PIN row is missing or deallocated at emit time, the event is suppressed upstream. The template can treat `{{2}}` as always populated.
@@ -102,3 +79,4 @@ If the WhatsApp Business review team flags "engineer" or asks for a canonical te
 |---|---|
 | 2026-10-07 | Initial SMS drafts (superseded). |
 | 2026-10-14 | Channel changed to WhatsApp. Customer-side wording updated per PM: "आपने हमारे engineer का कॉल मिस कर दिया है" replaces "You missed a call from our team member". Added WhatsApp capabilities section (Call button, bold emphasis). Added terminology trade-off note for "engineer". |
+| 2026-10-14 | Hindi only, per PM — English and bilingual alternatives removed. |
