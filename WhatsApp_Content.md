@@ -27,9 +27,10 @@ The push notifications live today anchor tone and language mix:
 | Component | Content |
 |---|---|
 | **Header** *(text, no variables)* | वापस कॉल करें |
-| **Body** *(text, variables `{{1}}` and `{{2}}`)* | आपने हमारे engineer का कॉल मिस कर दिया है।<br><br>वापस कॉल करने के लिए इस नंबर पर कॉल करें: ***{{1}}***<br>PIN: ***{{2}}*** |
+| **Body** *(text, variables `{{1}}` and `{{2}}`)* | आपने हमारे engineer का कॉल मिस कर दिया है।<br><br>वापस कॉल करने के लिए ***{{1}}*** पर कॉल करें और PIN ***{{2}}*** डालें। |
 | **Footer** *(text, no variables)* | Wiom |
-| **Button** *(Call phone number, optional but recommended)* | Label: **कॉल करें** · Phone: `{{1}}` *(same masked DID as in the body — pre-fills the dialler on tap)* |
+
+**Sample values for submission** — `{{1}}` = `+918046161110` · `{{2}}` = `234491`
 
 **Preview**
 
@@ -37,12 +38,9 @@ The push notifications live today anchor tone and language mix:
 >
 > आपने हमारे engineer का कॉल मिस कर दिया है।
 >
-> वापस कॉल करने के लिए इस नंबर पर कॉल करें: ***+918046161110***
-> PIN: ***234491***
+> वापस कॉल करने के लिए ***+918046161110*** पर कॉल करें और PIN ***234491*** डालें।
 >
 > *Wiom*
->
-> `[ कॉल करें ]`
 
 ---
 
@@ -51,9 +49,10 @@ The push notifications live today anchor tone and language mix:
 | Component | Content |
 |---|---|
 | **Header** *(text, no variables)* | वापस कॉल करें |
-| **Body** *(text, variables `{{1}}` and `{{2}}`)* | आपने कनेक्शन का कॉल मिस कर दिया है।<br><br>वापस कॉल करने के लिए इस नंबर पर कॉल करें: ***{{1}}***<br>PIN: ***{{2}}*** |
+| **Body** *(text, variables `{{1}}` and `{{2}}`)* | आपने कनेक्शन का कॉल मिस कर दिया है।<br><br>वापस कॉल करने के लिए ***{{1}}*** पर कॉल करें और PIN ***{{2}}*** डालें। |
 | **Footer** *(text, no variables)* | Wiom |
-| **Button** *(Call phone number, optional but recommended)* | Label: **कॉल करें** · Phone: `{{1}}` *(same masked DID as in the body — pre-fills the dialler on tap)* |
+
+**Sample values for submission** — `{{1}}` = `+918046161110` · `{{2}}` = `087275`
 
 **Preview**
 
@@ -61,21 +60,30 @@ The push notifications live today anchor tone and language mix:
 >
 > आपने कनेक्शन का कॉल मिस कर दिया है।
 >
-> वापस कॉल करने के लिए इस नंबर पर कॉल करें: ***+918046161110***
-> PIN: ***087275***
+> वापस कॉल करने के लिए ***+918046161110*** पर कॉल करें और PIN ***087275*** डालें।
 >
 > *Wiom*
->
-> `[ कॉल करें ]`
+
+---
+
+## Rejection — 14 Oct 2026, template id 8904784
+
+The first customer-side submission was rejected. Two format issues to fix on resubmit, both addressed in the Body above:
+
+1. **Variable at end of Body.** The original body ended with `PIN: {{2}}` — Meta rejects templates whose Body ends with a variable with no trailing text. The rewritten body ends with "डालें।" after `{{2}}`.
+2. **PIN pattern read as an OTP.** A Utility template that looks like an OTP delivery can get flagged "submit as Authentication". Framing the PIN as part of an instruction ("और PIN *{{2}}* डालें") rather than a terminal field ("PIN: *{{2}}*") removes the OTP vibe.
+
+If the resubmit is also rejected and the reviewer notes mention script-mixing, re-submit with `engineer` → `इंजीनियर` on the customer-side template.
 
 ---
 
 ## WhatsApp component notes
 
-- **Header, Footer, Body limits.** Header text ≤ 60 chars, Footer text ≤ 60 chars, Body text ≤ 1024 chars. All three drafts above fit well inside those limits.
-- **Variables.** Variables (`{{1}}`, `{{2}}`) are allowed only in the Body on these templates. Header and Footer are fixed strings — no variables, which means both templates will submit cleanly as "static-header, static-footer" templates (the easiest Utility category to get approved).
-- **Bold.** WhatsApp renders `*text*` as **bold**. Used on the number and the PIN — the two things the recipient needs to read and dial. Keep.
-- **Call-to-action button.** The optional Button turns the masked DID into a one-tap dial — no copy-paste. Phone-number value is the same `{{1}}` the body carries, so no new variable is introduced. The callee still enters the PIN on the IVR prompt; the button only removes the number-dialling friction.
+- **Header, Footer, Body limits.** Header text ≤ 60 chars, Footer text ≤ 60 chars, Body text ≤ 1024 chars. Both drafts above fit well inside.
+- **Variables.** Variables (`{{1}}`, `{{2}}`) live only in the Body. Header and Footer are fixed strings — "static-header, static-footer" is the easiest Utility template shape to get approved.
+- **Body must not end with a variable.** The rejection on 14 Oct hit this rule. The rewritten body ends with "डालें।" after `{{2}}` — fix applied.
+- **Bold.** WhatsApp renders `*text*` as **bold**. Used on the number and the PIN — the two things the recipient needs to read.
+- **No Call-to-action button.** Gupshup's template builder does not allow a variable in the Call-phone-number button, and the masked DID is per-message (different `{{1}}` on every send). Button omitted. If a Gupshup build later supports variables in the Call button, add it back with Label **कॉल करें** · Phone `{{1}}`.
 
 ---
 
@@ -107,3 +115,4 @@ If the WhatsApp Business review team flags "engineer" or asks for a canonical te
 | 2026-10-14 | Channel changed to WhatsApp. Customer-side wording updated per PM: "आपने हमारे engineer का कॉल मिस कर दिया है" replaces "You missed a call from our team member". Added WhatsApp capabilities section (Call button, bold emphasis). Added terminology trade-off note for "engineer". |
 | 2026-10-14 | Hindi only, per PM — English and bilingual alternatives removed. |
 | 2026-10-14 | Restructured into WhatsApp template components (Header · Body · Footer · Button) per Meta's template submission shape. Header "वापस कॉल करें" + Footer "Wiom" added for both templates. Previews included. |
+| 2026-10-14 | First submission rejected (template id 8904784). Body rewritten so it does not end with `{{2}}` — now ends with "डालें।" Call button removed: Gupshup's template builder does not allow a variable in the Call-phone-number button, and the masked DID is per-message. |
