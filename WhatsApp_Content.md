@@ -77,6 +77,41 @@ If the resubmit is also rejected and the reviewer notes mention script-mixing, r
 
 ---
 
+## Utility-approval submission checklist (for Gupshup)
+
+This template belongs in Meta's **Utility** category, not Authentication and not Marketing. The message is a service notification tied to a specific user action (the recipient missed a call); the PIN is a **callback routing code**, not a verification code. Fill the Gupshup submission form as follows.
+
+| Field | Value |
+|---|---|
+| **Category** | Utility |
+| **Language** | Hindi |
+| **Template name** *(suggestion)* | `ivr_2_missed_call_customer_hi` *(and `..._csp_hi` for the CSP template)* |
+| **Header type** | Text — no variables |
+| **Header text** | `वापस कॉल करें` |
+| **Body text** | *(see the Customer / CSP tables above — exact text)* |
+| **Body sample `{{1}}`** | `+918046161110` |
+| **Body sample `{{2}}`** | `234491` *(customer template)* · `087275` *(CSP template)* |
+| **Footer text** | `Wiom` |
+| **Buttons** | None *(Gupshup does not allow a variable in the Call-phone-number button, and the DID is per-message)* |
+| **Use case / description** *(if asked)* | "Service notification sent after a user misses an IVR call from the counterparty on Wiom's masked-calling line. The message carries the Wiom masked DID and the recipient's own routing PIN so the recipient can call back and reconnect to the original counterparty. Not a verification code. Not marketing." |
+
+**Why this fits Utility, not Authentication**
+- The PIN does not verify the recipient's identity. It routes an inbound call back to the right counterparty inside Wiom's masked-calling layer.
+- The message is triggered by a user action (missing a call), not by an authentication request.
+- No "verification code", "OTP", "confirm your account" or "secure code" phrasing anywhere in the body. The word "PIN" appears once as part of a call-back instruction.
+
+**Why this fits Utility, not Marketing**
+- No promotion of a plan, offer, product, discount or feature. The message delivers an operational outcome of a specific event the recipient initiated.
+
+**If the resubmit is still rejected**
+- **Rejection notes "Authentication category"**: swap `PIN` → `कॉल कोड` (call code) throughout the body. The phrase "कॉल कोड" cannot be read as an authentication code; it is specific to the callback mechanism.
+- **Rejection notes "Marketing content"**: remove the Footer `Wiom` and set the Header to `मिस्ड कॉल` (plain, non-branded).
+- **Rejection notes "mixed language / script"**: replace `engineer` with `इंजीनियर` on the customer template (CSP template is already single-script).
+
+Keep each resubmit as one minimal change — do not stack fixes, so the next rejection note is unambiguous.
+
+---
+
 ## WhatsApp component notes
 
 - **Header, Footer, Body limits.** Header text ≤ 60 chars, Footer text ≤ 60 chars, Body text ≤ 1024 chars. Both drafts above fit well inside.
@@ -116,3 +151,4 @@ If the WhatsApp Business review team flags "engineer" or asks for a canonical te
 | 2026-10-14 | Hindi only, per PM — English and bilingual alternatives removed. |
 | 2026-10-14 | Restructured into WhatsApp template components (Header · Body · Footer · Button) per Meta's template submission shape. Header "वापस कॉल करें" + Footer "Wiom" added for both templates. Previews included. |
 | 2026-10-14 | First submission rejected (template id 8904784). Body rewritten so it does not end with `{{2}}` — now ends with "डालें।" Call button removed: Gupshup's template builder does not allow a variable in the Call-phone-number button, and the masked DID is per-message. |
+| 2026-10-14 | Added a Utility-approval submission checklist for Gupshup: category, name convention, sample values, use-case description, and a stepped fallback sequence for the next possible rejection notes (Authentication / Marketing / mixed-script). Each fallback is a single minimal change. |
