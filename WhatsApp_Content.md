@@ -117,10 +117,21 @@ This template belongs in Meta's **Utility** category, not Authentication and not
 **Why this fits Utility, not Authentication**
 - The PIN does not verify the recipient's identity. It routes an inbound call back to the right counterparty inside Wiom's masked-calling layer.
 - The message is triggered by a user action (missing a call), not by an authentication request.
-- No "verification code", "OTP", "confirm your account" or "secure code" phrasing anywhere in the body. The word "PIN" appears once as part of a call-back instruction.
+- No "verification code", "OTP", "confirm your account" or "secure code" phrasing anywhere in the body. The second variable is framed as a service identifier ("कॉल रेफरेंस"), not an entry code.
 
 **Why this fits Utility, not Marketing**
 - No promotion of a plan, offer, product, discount or feature. The message delivers an operational outcome of a specific event the recipient initiated.
+
+### Why we are not submitting under Authentication
+
+Resubmitting as Authentication would likely auto-approve faster, but it comes with four real downsides:
+
+1. **Rigid mandated format.** Authentication templates must follow a pre-approved pattern like *"`{{1}}` is your verification code"*. **Only one variable is allowed** — just the code. We would lose the masked DID as a dynamic variable, lose the "मिस्ड कॉल" header, lose the custom footer, and lose the missed-call context. The body collapses to a code-delivery line and nothing else.
+2. **"Copy code" button replaces our UX.** Authentication templates auto-include a *Copy code* button that puts the code on the clipboard. That matches an app-login flow — not our dial-in flow. Users may think the task is done after copying and never make the call.
+3. **Different pricing bucket and quality metrics.** Authentication is priced and rate-limited differently on Meta's conversation-based billing, and it is measured against OTP-specific complaint rates (users flagging codes they did not request). A missed-call PIN that the user did not actively request a code for sits awkwardly against those metrics.
+4. **Audit risk — Meta can revoke later.** Meta's AI monitors live traffic against the declared category. Our PINs are not one-time (they can be reused across the ticket's lifetime), not short-lived like OTPs, and not reactive to a login attempt. If live traffic does not match verification-code behaviour, Meta can mark the template as miscategorised and revoke approval — any volume uplift makes that audit path fire more aggressively.
+
+Trade in plain terms: faster approval today for a messier UX and audit exposure later. Use Authentication only as a last resort if every Utility rewrite is exhausted.
 
 **If the resubmit is still rejected**
 - **Rejection notes `INCORRECT_CATEGORY` again** (second time): swap `कॉल रेफरेंस` → `कॉल आईडी` or `कॉल नंबर`, and remove the bold formatting on `{{2}}` so the classifier sees it as a plain identifier, not a code.
@@ -136,7 +147,7 @@ Keep each resubmit as one minimal change — do not stack fixes, so the next rej
 
 - **Header, Footer, Body limits.** Header text ≤ 60 chars, Footer text ≤ 60 chars, Body text ≤ 1024 chars. Both drafts above fit well inside.
 - **Variables.** Variables (`{{1}}`, `{{2}}`) live only in the Body. Header and Footer are fixed strings — "static-header, static-footer" is the easiest Utility template shape to get approved.
-- **Body must not end with a variable.** The rejection on 14 Oct hit this rule. The rewritten body ends with "डालें।" after `{{2}}` — fix applied.
+- **Body must not end with a variable.** The first rejection on 14 Oct hit this rule. The current body ends with "है।" after `{{2}}` — fix applied.
 - **Bold.** WhatsApp renders `*text*` as **bold**. Used on the number and the PIN — the two things the recipient needs to read.
 - **No Call-to-action button.** Gupshup's template builder does not allow a variable in the Call-phone-number button, and the masked DID is per-message (different `{{1}}` on every send). Button omitted. If a Gupshup build later supports variables in the Call button, add it back with Label **कॉल करें** · Phone `{{1}}`.
 
@@ -173,3 +184,4 @@ If the WhatsApp Business review team flags "engineer" or asks for a canonical te
 | 2026-10-14 | First submission rejected (template id 8904784). Body rewritten so it does not end with `{{2}}` — now ends with "डालें।" Call button removed: Gupshup's template builder does not allow a variable in the Call-phone-number button, and the masked DID is per-message. |
 | 2026-10-14 | Added a Utility-approval submission checklist for Gupshup: category, name convention, sample values, use-case description, and a stepped fallback sequence for the next possible rejection notes (Authentication / Marketing / mixed-script). Each fallback is a single minimal change. |
 | 2026-10-14 | Second submission rejected with `INCORRECT_CATEGORY`. Rewrote body: "PIN *{{2}}* डालें" → "आपका कॉल रेफरेंस *{{2}}* है"; Header "वापस कॉल करें" → "मिस्ड कॉल". The three remaining Authentication-triggering signals (PIN keyword, imperative "डालें", action-driven header) are all removed; the template now reads as a factual service notification with a reference identifier, the standard Utility shape. |
+| 2026-10-14 | Added "Why we are not submitting under Authentication" section — four downsides (one-variable format, Copy-code button UX, different pricing / quality metrics, audit-revocation risk) with the plain-terms trade. Captured so this doesn't need to be re-derived next time someone asks "why not Authentication?" |
