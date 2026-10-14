@@ -24,32 +24,58 @@ The push notifications live today anchor tone and language mix:
 
 ## Customer WhatsApp — sent when the customer missed the call
 
+| Component | Content |
+|---|---|
+| **Header** *(text, no variables)* | वापस कॉल करें |
+| **Body** *(text, variables `{{1}}` and `{{2}}`)* | आपने हमारे engineer का कॉल मिस कर दिया है।<br><br>वापस कॉल करने के लिए इस नंबर पर कॉल करें: ***{{1}}***<br>PIN: ***{{2}}*** |
+| **Footer** *(text, no variables)* | Wiom |
+| **Button** *(Call phone number, optional but recommended)* | Label: **कॉल करें** · Phone: `{{1}}` *(same masked DID as in the body — pre-fills the dialler on tap)* |
+
+**Preview**
+
+> **वापस कॉल करें**
+>
 > आपने हमारे engineer का कॉल मिस कर दिया है।
 >
-> वापस कॉल करने के लिए इस नंबर पर कॉल करें: *{{1}}*
-> PIN: *{{2}}*
+> वापस कॉल करने के लिए इस नंबर पर कॉल करें: ***+918046161110***
+> PIN: ***234491***
 >
-> — Wiom
+> *Wiom*
+>
+> `[ कॉल करें ]`
 
 ---
 
 ## CSP WhatsApp — sent when the CSP missed the call
 
+| Component | Content |
+|---|---|
+| **Header** *(text, no variables)* | वापस कॉल करें |
+| **Body** *(text, variables `{{1}}` and `{{2}}`)* | आपने कनेक्शन का कॉल मिस कर दिया है।<br><br>वापस कॉल करने के लिए इस नंबर पर कॉल करें: ***{{1}}***<br>PIN: ***{{2}}*** |
+| **Footer** *(text, no variables)* | Wiom |
+| **Button** *(Call phone number, optional but recommended)* | Label: **कॉल करें** · Phone: `{{1}}` *(same masked DID as in the body — pre-fills the dialler on tap)* |
+
+**Preview**
+
+> **वापस कॉल करें**
+>
 > आपने कनेक्शन का कॉल मिस कर दिया है।
 >
-> वापस कॉल करने के लिए इस नंबर पर कॉल करें: *{{1}}*
-> PIN: *{{2}}*
+> वापस कॉल करने के लिए इस नंबर पर कॉल करें: ***+918046161110***
+> PIN: ***087275***
 >
-> — Wiom
+> *Wiom*
+>
+> `[ कॉल करें ]`
 
 ---
 
-## WhatsApp-specific capabilities worth using
+## WhatsApp component notes
 
-Two things WhatsApp gives us that SMS did not. Both are optional for day-one launch but worth asking the Message orchestrator team to turn on:
-
-1. **"Call phone number" button.** WhatsApp Utility templates can carry a CTA button that opens the dialer pre-filled with the masked calling DID. One tap, no number copy-paste. Button label: **"कॉल करें"** / **"Call Wiom"**. Behaviour: dials `{{1}}` — the same masked DID in the body. The callee still needs to enter the PIN on the IVR prompt, but the number-dialling friction is gone.
-2. **Bold emphasis on the PIN.** WhatsApp's `*text*` renders as bold. The drafts above already use it on the number and the PIN. This is the main readability win over SMS; keep it.
+- **Header, Footer, Body limits.** Header text ≤ 60 chars, Footer text ≤ 60 chars, Body text ≤ 1024 chars. All three drafts above fit well inside those limits.
+- **Variables.** Variables (`{{1}}`, `{{2}}`) are allowed only in the Body on these templates. Header and Footer are fixed strings — no variables, which means both templates will submit cleanly as "static-header, static-footer" templates (the easiest Utility category to get approved).
+- **Bold.** WhatsApp renders `*text*` as **bold**. Used on the number and the PIN — the two things the recipient needs to read and dial. Keep.
+- **Call-to-action button.** The optional Button turns the masked DID into a one-tap dial — no copy-paste. Phone-number value is the same `{{1}}` the body carries, so no new variable is introduced. The callee still enters the PIN on the IVR prompt; the button only removes the number-dialling friction.
 
 ---
 
@@ -80,3 +106,4 @@ If the WhatsApp Business review team flags "engineer" or asks for a canonical te
 | 2026-10-07 | Initial SMS drafts (superseded). |
 | 2026-10-14 | Channel changed to WhatsApp. Customer-side wording updated per PM: "आपने हमारे engineer का कॉल मिस कर दिया है" replaces "You missed a call from our team member". Added WhatsApp capabilities section (Call button, bold emphasis). Added terminology trade-off note for "engineer". |
 | 2026-10-14 | Hindi only, per PM — English and bilingual alternatives removed. |
+| 2026-10-14 | Restructured into WhatsApp template components (Header · Body · Footer · Button) per Meta's template submission shape. Header "वापस कॉल करें" + Footer "Wiom" added for both templates. Previews included. |
