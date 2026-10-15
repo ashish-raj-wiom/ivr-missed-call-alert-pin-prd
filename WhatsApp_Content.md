@@ -22,13 +22,17 @@ The push notifications live today anchor tone and language mix:
 
 ---
 
-## CSP WhatsApp — sent when the CSP missed the call *(APPROVED — template id 8909340)*
+## CSP WhatsApp — sent when the CSP missed the call *(PENDING RE-SUBMISSION — supersedes template 8909340)*
 
 | Component | Content |
 |---|---|
-| **Body** *(text, variables `{{1}}` and `{{2}}`)* | नमस्ते,<br><br>आपके Wiom इंटरनेट कनेक्शन के संबंध में हमारी टीम ने आपको कॉल किया था, लेकिन आपसे बात नहीं हो पाई।<br><br>वापस कॉल करने के लिए इस नंबर पर कॉल करें: {{1}}<br><br>कॉल के दौरान पूछे जाने पर {{2}} दबाएं। |
+| **Body** *(text, variables `{{1}}` and `{{2}}`)* | नमस्ते,<br><br>आपके Wiom कनेक्शन ने आपको कॉल किया था, लेकिन आपसे बात नहीं हो पाई।<br><br>वापस कॉल करने के लिए इस नंबर पर कॉल करें: {{1}}<br><br>कॉल के दौरान पूछे जाने पर {{2}} दबाएं। |
 
-Approved by Meta on 15 Oct 2026. Mirror the Header, Footer and Button components exactly as they are on template 8909340 — do not change any component shape.
+**Why this change** — template 8909340 was approved by Meta on 15 Oct 2026 with the body *"आपके Wiom इंटरनेट कनेक्शन के संबंध में हमारी टीम ने आपको कॉल किया था …"*. That reads as **Wiom's team** having called the CSP, but on the CSP side the caller is actually the **subscriber (connection)** — the CSP missed a call from their own connection via Wiom's masked-calling line. The approved copy misattributes the caller, so the recipient wouldn't understand *who* they are calling back. The fix swaps the actor clause from "हमारी टीम ने" to "आपके Wiom कनेक्शन ने", matching today's CSP push (*"आपने कनेक्शन का कॉल मिस कर दिया"*) and the Wiom Operational Terminology rule that CSPs have **connections**, never customers.
+
+Everything else — the structural shape, the "कॉल के दौरान पूछे जाने पर {{2}} दबाएं" dialpad framing, the greeting, the softened-miss clause, the two-paragraph separation of `{{1}}` from `{{2}}` — is byte-for-byte the approved shape, so Meta's classifier should still see the Utility pattern. Mirror the Header, Footer and Button components exactly as they were on template 8909340 — do not change any component shape.
+
+Submit as a **new template** (same Utility category, same language, suggested name `ivr_2_missed_call_csp_hi_v2`). Keep template 8909340 unused in prod — do not route sends to it. Once the new template is approved, deprecate 8909340.
 
 **Sample values** — `{{1}}` = `+918046161110` · `{{2}}` = `087275`
 
@@ -92,9 +96,9 @@ Changes attempted:
 
 Still bounced. Meta's classifier was reading the structural pattern — short message + phone-number variable + short-code variable — as Authentication regardless of specific keywords.
 
-### Fourth submission — approved on CSP side (template id 8909340, 15 Oct 2026)
+### Fourth submission — approved on CSP side (template id 8909340, 15 Oct 2026) — later retired for wrong actor framing
 
-Approved body (CSP side):
+Approved body (CSP side) as submitted on 15 Oct 2026:
 > नमस्ते,
 >
 > आपके Wiom इंटरनेट कनेक्शन के संबंध में हमारी टीम ने आपको कॉल किया था, लेकिन आपसे बात नहीं हो पाई।
@@ -103,7 +107,22 @@ Approved body (CSP side):
 >
 > कॉल के दौरान पूछे जाने पर {{2}} दबाएं।
 
-The structural shifts that cleared the Utility classifier are documented in the **"Why the approved shape clears INCORRECT_CATEGORY"** section above. The customer template mirrors this exactly, swapping `हमारी टीम` → `हमारे engineer`.
+Cleared Meta's Utility classifier — the structural shifts that worked are documented in the **"Why the approved shape clears INCORRECT_CATEGORY"** section above. The customer template was then mirrored off this body, swapping `हमारी टीम` → `हमारे engineer`.
+
+**Content bug discovered on 15 Oct 2026 (same day).** On the CSP side the caller is the subscriber, not Wiom's team, so "हमारी टीम ने आपको कॉल किया था" misattributes the caller. Fixed by swapping the actor clause to "आपके Wiom कनेक्शन ने" and dropping the "के संबंध में" preface, which preserves the Utility shape intact. The customer template is unaffected — on the customer side the caller **is** the engineer, so "हमारे engineer ने आपको कॉल किया था" is correct as written.
+
+### Fifth submission — CSP, actor-corrected (pending)
+
+Body being submitted:
+> नमस्ते,
+>
+> आपके Wiom कनेक्शन ने आपको कॉल किया था, लेकिन आपसे बात नहीं हो पाई।
+>
+> वापस कॉल करने के लिए इस नंबर पर कॉल करें: {{1}}
+>
+> कॉल के दौरान पूछे जाने पर {{2}} दबाएं।
+
+Only two edits vs the 8909340-approved body: `आपके Wiom इंटरनेट कनेक्शन के संबंध में हमारी टीम ने` → `आपके Wiom कनेक्शन ने`, and dropped "इंटरनेट" and "के संबंध में" to keep the sentence natural with the connection as the subject. The six-signal Utility structural pattern (greeting · softened miss · phone variable in its own paragraph · "कॉल के दौरान पूछे जाने पर {{2}} दबाएं" dialpad framing · no "PIN"/"कोड"/"डालें" · no bold on `{{2}}`) is intact.
 
 ---
 
@@ -197,3 +216,4 @@ If the WhatsApp Business review team flags "engineer" or asks for a canonical te
 | 2026-10-14 | Second submission rejected with `INCORRECT_CATEGORY`. Rewrote body: "PIN *{{2}}* डालें" → "आपका कॉल रेफरेंस *{{2}}* है"; Header "वापस कॉल करें" → "मिस्ड कॉल". The three remaining Authentication-triggering signals (PIN keyword, imperative "डालें", action-driven header) are all removed; the template now reads as a factual service notification with a reference identifier, the standard Utility shape. |
 | 2026-10-14 | Added "Why we are not submitting under Authentication" section — four downsides (one-variable format, Copy-code button UX, different pricing / quality metrics, audit-revocation risk) with the plain-terms trade. Captured so this doesn't need to be re-derived next time someone asks "why not Authentication?" |
 | 2026-10-15 | **CSP template approved by Meta** (id 8909340). The approved body uses a longer, conversational Utility shape — greeting + service context + softened miss framing + "कॉल के दौरान पूछे जाने पर {{2}} दबाएं" (press when asked during the call). The key structural shift is positioning `{{2}}` as a dialpad response to an IVR prompt rather than a code being delivered. The three earlier rejections failed because Meta's classifier reads "phone-number variable + short-code variable + enter instruction" as Authentication regardless of specific keywords. Customer template rewritten to mirror the approved CSP body, swapping `हमारी टीम` → `हमारे engineer`. Section added: "Why the approved shape clears INCORRECT_CATEGORY" — captures the six structural signals and how the approved shape dodges each. |
+| 2026-10-15 | **CSP body actor-fix.** Approved template 8909340 misattributes the caller — it says *"हमारी टीम ने आपको कॉल किया था"* (our team called you), but on the CSP side the caller is the subscriber (connection), not Wiom's team. Reworded to *"आपके Wiom कनेक्शन ने आपको कॉल किया था"*, matching today's CSP push (*"आपने कनेक्शन का कॉल मिस कर दिया"*) and the Wiom Operational Terminology rule that CSPs have connections. Dropped "इंटरनेट" and "के संबंध में" so the connection reads naturally as the subject. Everything else is byte-for-byte the approved shape, so the Utility classifier should still clear. Template 8909340 to be retired once the re-submission is approved; customer template is unaffected (the engineer **is** the caller on the customer side). |
